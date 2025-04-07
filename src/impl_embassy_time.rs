@@ -58,6 +58,12 @@ impl Timer for embassy_time::Instant {
 }
 
 impl Alarm for embassy_time::Instant {
+    #[cfg(feature = "ticks-api")]
+    async fn wait_until_ticks(&mut self, value: u32) -> Result<(), OverflowError> {
+        embassy_time::Timer::at(*self + embassy_time::Duration::from_ticks(value as u64)).await;
+        Ok(())
+    }
+
     async fn wait_until_micros(&mut self, value: u32) -> Result<(), OverflowError> {
         embassy_time::Timer::at(*self + embassy_time::Duration::from_micros(value as u64)).await;
         Ok(())

@@ -43,6 +43,10 @@ pub trait Timer {
 /// An alarm that can be used to wait for a time to come.
 #[allow(async_fn_in_trait)]
 pub trait Alarm: Timer {
+    #[cfg(feature = "ticks-api")]
+    /// Wait until the timer reaches the alarm specified in ticks. If the alarm is already reached, the function exits immediately.
+    /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
+    async fn wait_until_ticks(&mut self, value: u32) -> Result<(), OverflowError>;
     /// Wait until the timer reaches the alarm specified in microseconds rounded up. If the alarm is already reached, the function exits immediately.
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_micros(&mut self, value: u32) -> Result<(), OverflowError>;

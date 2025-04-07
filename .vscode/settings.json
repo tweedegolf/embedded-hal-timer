@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "examples/std/Cargo.toml",
+        "Cargo.toml",
+    ]
+}

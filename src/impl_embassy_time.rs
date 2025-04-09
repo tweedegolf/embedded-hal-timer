@@ -11,19 +11,19 @@ impl Timer for embassy_time::Instant {
     }
 
     #[cfg(feature = "ticks-api")]
-    fn elapsed_ticks(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_ticks(&self) -> Result<u32, OverflowError> {
         u32::try_from(self.elapsed().as_ticks()).map_err(|_| OverflowError)
     }
 
-    fn elapsed_micros(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_micros(&self) -> Result<u32, OverflowError> {
         u32::try_from(self.elapsed().as_micros()).map_err(|_| OverflowError)
     }
 
-    fn elapsed_millis(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_millis(&self) -> Result<u32, OverflowError> {
         u32::try_from(self.elapsed().as_millis()).map_err(|_| OverflowError)
     }
 
-    fn elapsed_secs(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_secs(&self) -> Result<u32, OverflowError> {
         u32::try_from(self.elapsed().as_secs()).map_err(|_| OverflowError)
     }
 

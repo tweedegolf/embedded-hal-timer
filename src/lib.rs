@@ -1,9 +1,9 @@
 #![cfg_attr(not(test), no_std)]
 
-#[cfg(feature = "embassy-time")]
-pub mod impl_embassy_time;
 #[cfg(feature = "embassy-stm32")]
 pub mod impl_embassy_stm32;
+#[cfg(feature = "embassy-time")]
+pub mod impl_embassy_time;
 
 /// The time has overflowed
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -19,14 +19,14 @@ pub trait Timer {
     fn tickrate(&self) -> u32;
     #[cfg(feature = "ticks-api")]
     /// Return the number of elapsed ticks.
-    fn elapsed_ticks(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_ticks(&self) -> Result<u32, OverflowError>;
 
     /// Return the number of elapsed microseconds, rounded down.
-    fn elapsed_micros(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_micros(&self) -> Result<u32, OverflowError>;
     /// Return the number of elapsed milliseconds, rounded down.
-    fn elapsed_millis(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_millis(&self) -> Result<u32, OverflowError>;
     /// Return the number of elapsed seconds, rounded down.
-    fn elapsed_secs(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_secs(&self) -> Result<u32, OverflowError>;
 
     #[cfg(feature = "max-api")]
     /// The (inclusive) maximum number of microseconds that can happen before the overflow occurs.
@@ -46,16 +46,24 @@ pub trait Timer {
 #[allow(async_fn_in_trait)]
 pub trait Alarm: Timer {
     #[cfg(feature = "ticks-api")]
-    /// Wait until the timer reaches the alarm specified in ticks. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in ticks since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_ticks(&mut self, value: u32) -> Result<(), OverflowError>;
-    /// Wait until the timer reaches the alarm specified in microseconds rounded up. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in microseconds since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_micros(&mut self, value: u32) -> Result<(), OverflowError>;
-    /// Wait until the timer reaches the alarm specified in milliseconds rounded up. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in milliseconds since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_millis(&mut self, value: u32) -> Result<(), OverflowError>;
-    /// Wait until the timer reaches the alarm specified in seconds rounded up. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in seconds since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_secs(&mut self, value: u32) -> Result<(), OverflowError>;
 }

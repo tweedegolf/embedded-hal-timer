@@ -25,7 +25,7 @@ impl<'a, T: CoreInstance> crate::Timer for Timer<'a, T> {
         self.get_clock_frequency().0 / (self.regs_core().psc().read() + 1) as u32
     }
 
-    fn elapsed_ticks(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_ticks(&self) -> Result<u32, OverflowError> {
         if self.regs_core().sr().read().uif() {
             return Err(OverflowError);
         }
@@ -33,15 +33,15 @@ impl<'a, T: CoreInstance> crate::Timer for Timer<'a, T> {
         Ok(self.regs_core().cnt().read().cnt() as u32)
     }
 
-    fn elapsed_micros(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_micros(&self) -> Result<u32, OverflowError> {
         Ok(((self.elapsed_ticks()? as u64 * 1_000_000u64) / self.tickrate() as u64) as u32)
     }
 
-    fn elapsed_millis(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_millis(&self) -> Result<u32, OverflowError> {
         Ok((self.elapsed_ticks()? * 1000) / self.tickrate())
     }
 
-    fn elapsed_secs(&mut self) -> Result<u32, OverflowError> {
+    fn elapsed_secs(&self) -> Result<u32, OverflowError> {
         Ok(self.elapsed_ticks()? / self.tickrate())
     }
 

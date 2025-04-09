@@ -34,14 +34,14 @@ pub trait Timer {
     fn tickrate(&self) -> u32;
     #[cfg(feature = "ticks-api")]
     /// Return the number of elapsed ticks.
-    fn elapsed_ticks(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_ticks(&self) -> Result<u32, OverflowError>;
 
     /// Return the number of elapsed microseconds, rounded down.
-    fn elapsed_micros(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_micros(&self) -> Result<u32, OverflowError>;
     /// Return the number of elapsed milliseconds, rounded down.
-    fn elapsed_millis(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_millis(&self) -> Result<u32, OverflowError>;
     /// Return the number of elapsed seconds, rounded down.
-    fn elapsed_secs(&mut self) -> Result<u32, OverflowError>;
+    fn elapsed_secs(&self) -> Result<u32, OverflowError>;
 
     #[cfg(feature = "max-api")]
     /// The (inclusive) maximum number of microseconds that can happen before the overflow occurs.
@@ -75,16 +75,24 @@ This can help a driver reject an implementation if its max time is too short.
 #[allow(async_fn_in_trait)]
 pub trait Alarm: Timer {
     #[cfg(feature = "ticks-api")]
-    /// Wait until the timer reaches the alarm specified in ticks. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in ticks since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    /// 
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_ticks(&mut self, value: u32) -> Result<(), OverflowError>;
-    /// Wait until the timer reaches the alarm specified in microseconds rounded up. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in microseconds since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    /// 
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_micros(&mut self, value: u32) -> Result<(), OverflowError>;
-    /// Wait until the timer reaches the alarm specified in milliseconds rounded up. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in milliseconds since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    /// 
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_millis(&mut self, value: u32) -> Result<(), OverflowError>;
-    /// Wait until the timer reaches the alarm specified in seconds rounded up. If the alarm is already reached, the function exits immediately.
+    /// Wait until the timer reaches the alarm specified in seconds since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    /// 
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     async fn wait_until_secs(&mut self, value: u32) -> Result<(), OverflowError>;
 }
@@ -96,9 +104,11 @@ For `Alarm` it makes sense though, since it needs a time reference which `Timer`
 
 ## Considerations
 
-- The traits are not generally fallible. Similar to `DelayNs` these traits are meant to be used with internal hardware timers.
+- The traits are not generically fallible and thus can't support things like communication errors.
+  Similar to `DelayNs` these traits are meant to be used with internal hardware timers.
 - Overflow is an error. If it were not, it could overflow and the user would get a low number returned which would be unexpected in most cases.
 - All time values are `u32` since this is usable in most usecases and most people are using 32-bit hardware.
+  A 16-bit timer would simply overflow faster and a 64-bit timer could overflow for `elapsed_micros` but not yet for `elapsed_millis`.
 
 ## Why do we need this?
 
@@ -188,10 +198,23 @@ async fn wait_for_event(&mut self) -> Event {
   }
   ```
   - This would allow priming the alarm ahead of time which *could* make things easier for the user, especially if the alarm value is kept after restart. This would be at the cost of potentially higher implementation complexity.
-- Which extensions do we want to include in the final result?
+- The `Alarm` could also support multiple alarms. If the hardware has multiple compare channels, it could put them to work nicely. Pseudocode:
+  ```rust
+  pub trait Alarm: Timer {
+      fn alarms_available(&self) -> usize;
+      async fn wait_until_xxx(&self, value: u32) -> Result<(), OverflowError | MaxAlarmsReached>;
+  }
+  ```
+  This would also make the functions immutable which would make sharing an alarm easier, but it would require interior mutability for implementations
+- Which extensions (ticks and max) do we want to include in the final result?
 - Is overflow the only error we want to give?
   - What should happen when the timer hasn't started yet?
   - Implementation would likely get simpler if the overflow error (but perhaps with a different name) would be allowed to be returned when the timer hasn't started yet
+- What should the mutability for all functions be?
+  - This is where `&mut self` helps implementations and `&self` helps sharability for the user which is a tension that needs a decision to be resolved
+- What about timers that have no, bad or difficult overflow detection? That currently is not supported. Should it?
+- The `Timer` API is up-counting. Should there be some helpers somewhere to help implementors convert a down-counting timer to an up-counting one?
+- What should the biggest and smallest (non-tick) resolution be? `DelayNs` goes down to nanoseconds, but only up to milliseconds.
 
 ## The case against `Alarm`
 

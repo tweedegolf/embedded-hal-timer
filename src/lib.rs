@@ -2,6 +2,8 @@
 
 #[cfg(feature = "embassy-time")]
 pub mod impl_embassy_time;
+#[cfg(feature = "embassy-stm32")]
+pub mod impl_embassy_stm32;
 
 /// The time has overflowed
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]

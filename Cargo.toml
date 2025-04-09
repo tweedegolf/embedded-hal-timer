@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["ticks-api", "max-api", "embassy-time"]
+default = ["ticks-api", "max-api", "embassy-time", "embassy-stm32"]
 ticks-api = []
 max-api = []
 embassy-time = ["dep:embassy-time"]
+embassy-stm32 = ["dep:embassy-stm32", "ticks-api", "max-api"]
 
 [dependencies]
 embassy-time = { version = "0.4.0", optional = true }
+embassy-stm32 = { version = "0.2.0", optional = true, features = ["stm32l476rg", "unstable-pac"] }

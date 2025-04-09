@@ -189,6 +189,9 @@ async fn wait_for_event(&mut self) -> Event {
   ```
   - This would allow priming the alarm ahead of time which *could* make things easier for the user, especially if the alarm value is kept after restart. This would be at the cost of potentially higher implementation complexity.
 - Which extensions do we want to include in the final result?
+- Is overflow the only error we want to give?
+  - What should happen when the timer hasn't started yet?
+  - Implementation would likely get simpler if the overflow error (but perhaps with a different name) would be allowed to be returned when the timer hasn't started yet
 
 ## The case against `Alarm`
 

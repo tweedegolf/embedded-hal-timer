@@ -188,6 +188,23 @@ async fn wait_for_event(&mut self) -> Event {
   }
   ```
   - This would allow priming the alarm ahead of time which *could* make things easier for the user, especially if the alarm value is kept after restart. This would be at the cost of potentially higher implementation complexity.
+- Which extensions do we want to include in the final result?
+
+## The case against `Alarm`
+
+The `Alarm` trait is not 100% required when you have access to the `Timer` and `DelayNs`.
+
+The way to emulate an alarm is:
+```rust
+let alarm_time_us = // Some value...
+let current_time_us = timer.elapsed_micros().unwrap();
+
+if alarm_time_us > current_time_us {
+    delay.delay_us(alarm_time_us - current_time_us).await;
+}
+```
+
+This is however clunky, possibly requires two timers instead of just one on simple implementations and is likely less accurate.
 
 ## Prior art
 

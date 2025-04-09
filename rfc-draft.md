@@ -27,7 +27,7 @@ pub struct OverflowError;
 /// A timer that can be started from 0 and keeps track of the time until it overflows.
 pub trait Timer {
     /// Start or restart the timer at 0.
-    fn start(&mut self);
+    fn start(&self);
 
     #[cfg(feature = "ticks-api")]
     /// Get the amount of ticks per second.

@@ -5,20 +5,22 @@ use embassy_stm32::{
 };
 
 impl<'a, T: CoreInstance> crate::Timer for Timer<'a, T> {
-    fn start(&mut self) {
-        self.regs_core().cr1().modify(|reg| {
-            reg.set_urs(Urs::COUNTER_ONLY);
-            reg.set_opm(true);
-            reg.set_udis(false);
+    fn start(&self) {
+        critical_section::with(|_| {
+            self.regs_core().cr1().modify(|reg| {
+                reg.set_urs(Urs::COUNTER_ONLY);
+                reg.set_opm(true);
+                reg.set_udis(false);
+            });
+
+            self.regs_core().arr().write(|reg| reg.set_arr(u16::MAX));
+            // Generate an Update Request
+            self.regs_core().egr().write(|r| r.set_ug(true));
+            self.regs_core().sr().modify(|reg| reg.set_uif(false));
+
+            Timer::reset(self);
+            Timer::start(self);
         });
-
-        self.regs_core().arr().write(|reg| reg.set_arr(u16::MAX));
-        // Generate an Update Request
-        self.regs_core().egr().write(|r| r.set_ug(true));
-        self.regs_core().sr().modify(|reg| reg.set_uif(false));
-
-        Timer::reset(self);
-        Timer::start(self);
     }
 
     fn tickrate(&self) -> u32 {

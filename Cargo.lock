@@ -308,6 +308,7 @@ dependencies = [
 name = "embedded-hal-timer"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "embassy-stm32",
  "embassy-time",
 ]

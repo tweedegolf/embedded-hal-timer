@@ -2,7 +2,7 @@ use embassy_executor::{Executor, Spawner};
 use embassy_futures::select::{Either, select};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 use embassy_time::{Duration, Instant};
-use embedded_hal_timer::Alarm;
+use embedded_hal_timer::{impl_embassy_time::EmbassyTimeTimer, Alarm};
 use static_cell::StaticCell;
 
 static DISTURBER: Signal<CriticalSectionRawMutex, ()> = Signal::new();
@@ -11,7 +11,7 @@ static DISTURBER: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 async fn main_task(spawner: Spawner) {
     spawner.must_spawn(signaller());
 
-    run_disturber_with_regular(&DISTURBER, Instant::now()).await;
+    run_disturber_with_regular(&DISTURBER, EmbassyTimeTimer::new()).await;
 }
 
 #[embassy_executor::task]

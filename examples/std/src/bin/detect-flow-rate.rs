@@ -1,7 +1,7 @@
 use embassy_executor::{Executor, Spawner};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal};
 use embassy_time::{Duration, Instant};
-use embedded_hal_timer::Timer;
+use embedded_hal_timer::{impl_embassy_time::EmbassyTimeTimer, Timer};
 use static_cell::StaticCell;
 
 static DETECT_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new();
@@ -12,7 +12,7 @@ async fn main_task(spawner: Spawner) {
     spawner.must_spawn(signaller());
 
     let mut flow_rate =
-        FlowRateDriver::new(FLOW_PER_TICK, &DETECT_SIGNAL, embassy_time::Instant::now());
+        FlowRateDriver::new(FLOW_PER_TICK, &DETECT_SIGNAL, EmbassyTimeTimer::new());
 
     println!("Starting flow detection");
     let mut total_flow = 0.0;
@@ -50,7 +50,7 @@ impl<T: Timer> FlowRateDriver<T> {
     fn new(
         flow_rate_per_tick: f32,
         detect: &'static Signal<CriticalSectionRawMutex, ()>,
-        mut timer: T,
+        timer: T,
     ) -> Self {
         timer.start();
 

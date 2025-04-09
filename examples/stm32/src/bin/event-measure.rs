@@ -27,7 +27,7 @@ async fn main(_spawner: Spawner) {
     measure_button(button, timer).await;
 }
 
-async fn measure_button(mut button: impl Wait, mut timer: impl Timer) -> ! {
+async fn measure_button(mut button: impl Wait, timer: impl Timer) -> ! {
     loop {
         button.wait_for_low().await.unwrap();
         timer.start();

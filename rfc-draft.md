@@ -1,10 +1,10 @@
 # Embedded-hal `Timer` and `Alarm`
 
 Time handling in `embedded-hal` is limited to simple delays.
-While a full all-encompasing time system like `embassy-time` is likely out of scope, it would be helpful if some of the gaps are plugged.
+While a full all-encompasing time system like `embassy-time` is likely out of scope for the embedded-hal project, it would be helpful if some of the gaps are plugged.
 
-The main proposal is a `Timer` trait for measuring the time between two or more points, but only for short durations.
-Using `Timer` as a monotonic timer for the time since startup is out of scope.
+This RFC is made up of two parts. The main proposal is a `Timer` trait for measuring the time between two or more points, intended for short durations.
+Using `Timer` as a monotonic timer for the time since startup is a valid usecase, but is not the main target.
 Additionally an `Alarm` trait is proposed that makes the `Timer` easier to use in some async contexts (instead of having to juggle both a `Timer` and a `DelayNs`).
 
 If this RFC were accepted as is, there'd be three traits that have something to do with time:
@@ -12,61 +12,53 @@ If this RFC were accepted as is, there'd be three traits that have something to 
 - `Timer`: Start a running time at 0, and query how long it has been running
 - `Alarm`: Wait until a `Timer` value has been reached
 
-This proposal has two extensions that can be accepted or not depending on whether the tradeoff is worth it.
-Here they are represented using crate features, but when accepted they should be fully part of the trait without cfg gates.
-
-Find the traits and some implementations here: https://github.com/tweedegolf/embedded-hal-timer
+The traits have been implemented as a crate here: https://github.com/tweedegolf/embedded-hal-timer
 
 ## `Timer`
 
 ```rust
-/// The time has overflowed
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub struct OverflowError;
-
 /// A timer that can be started from 0 and keeps track of the time until it overflows.
 pub trait Timer {
     /// Start or restart the timer at 0.
-    fn start(&self);
+    /// 
+    /// The elapsed time is undefined before this function has been called.
+    fn start(&mut self);
 
-    #[cfg(feature = "ticks-api")]
     /// Get the amount of ticks per second.
-    fn tickrate(&self) -> u32;
-    #[cfg(feature = "ticks-api")]
+    fn tickrate(&self) -> u64;
     /// Return the number of elapsed ticks.
-    fn elapsed_ticks(&self) -> Result<u32, OverflowError>;
+    fn elapsed_ticks(&self) -> Result<u64, OverflowError>;
 
+    /// Return the number of elapsed nanoseconds, rounded down.
+    fn elapsed_nanos(&self) -> Result<u64, OverflowError>;
     /// Return the number of elapsed microseconds, rounded down.
-    fn elapsed_micros(&self) -> Result<u32, OverflowError>;
+    fn elapsed_micros(&self) -> Result<u64, OverflowError>;
     /// Return the number of elapsed milliseconds, rounded down.
-    fn elapsed_millis(&self) -> Result<u32, OverflowError>;
+    fn elapsed_millis(&self) -> Result<u64, OverflowError>;
     /// Return the number of elapsed seconds, rounded down.
-    fn elapsed_secs(&self) -> Result<u32, OverflowError>;
+    fn elapsed_secs(&self) -> Result<u64, OverflowError>;
 
-    #[cfg(feature = "max-api")]
-    /// The (inclusive) maximum number of microseconds that can happen before the overflow occurs.
-    fn max_micros(&self) -> u32;
-    #[cfg(feature = "max-api")]
-    /// The (inclusive) maximum number of milliseconds that can happen before the overflow occurs.
-    fn max_millis(&self) -> u32;
-    #[cfg(feature = "max-api")]
-    /// The (inclusive) maximum number of seconds that can happen before the overflow occurs.
-    fn max_secs(&self) -> u32;
-    #[cfg(all(feature = "max-api", feature = "ticks-api"))]
     /// The (inclusive) maximum number of ticks that can happen before the overflow occurs.
-    fn max_ticks(&self) -> u32;
+    fn max_ticks(&self) -> u64;
+    /// The (inclusive) maximum number of nanoseconds that can happen before the overflow occurs.
+    fn max_nanos(&self) -> u64;
+    /// The (inclusive) maximum number of microseconds that can happen before the overflow occurs.
+    fn max_micros(&self) -> u64;
+    /// The (inclusive) maximum number of milliseconds that can happen before the overflow occurs.
+    fn max_millis(&self) -> u64;
+    /// The (inclusive) maximum number of seconds that can happen before the overflow occurs.
+    fn max_secs(&self) -> u64;
 }
 ```
 
-In its simplest form you can start (and restart) the timer and get its elapsed time since the start.
-The returned elapsed time is rounded down, so the contract is that *at least* this amount of time has passed.
+In its simplest form the user can start (and restart) the timer and get its elapsed time since the start.
+The returned elapsed time is rounded down, so the contract is that *at least* this amount of time has passed. This is congruent with `DelayNs` and other timers in the ecosystem.
 
-The `ticks` extension adds the ability to inspect the raw tick count and the tickrate.
-In some situations this allows the user to do more accurate math manually.
-Any serious/embedded implementation of `Timer` will already carry this information internally, so it's cheap/free to expose it to the user.
+The user can use the ticks value instead of the fixed time values (e.g. millis) if the timer is used in a situation where high precision is required.
 
-The `max` extension add the ability to expect the value at which the implementation will overflow.
-This can help a driver reject an implementation if its max time is too short.
+To be able to predict failure, users can query the max values that the timer supports. A driver that requires the max to be above a minimal threshold would do good to assert/check the value in some init stage.
+
+A timer that can't detect overflows can't implement this trait.
 
 ## `Alarm`
 
@@ -74,146 +66,73 @@ This can help a driver reject an implementation if its max time is too short.
 /// An alarm that can be used to wait for a time to come.
 #[allow(async_fn_in_trait)]
 pub trait Alarm: Timer {
-    #[cfg(feature = "ticks-api")]
     /// Wait until the timer reaches the alarm specified in ticks since the timer has started.
     /// If the alarm is already reached, the function exits immediately.
-    /// 
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_ticks(&mut self, value: u32) -> Result<(), OverflowError>;
+    async fn wait_until_ticks(&mut self, value: u64) -> Result<(), OverflowError>;
+    /// Wait until the timer reaches the alarm specified in nanoseconds since the timer has started.
+    /// If the alarm is already reached, the function exits immediately.
+    ///
+    /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
+    async fn wait_until_nanos(&mut self, value: u64) -> Result<(), OverflowError>;
     /// Wait until the timer reaches the alarm specified in microseconds since the timer has started.
     /// If the alarm is already reached, the function exits immediately.
-    /// 
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_micros(&mut self, value: u32) -> Result<(), OverflowError>;
+    async fn wait_until_micros(&mut self, value: u64) -> Result<(), OverflowError>;
     /// Wait until the timer reaches the alarm specified in milliseconds since the timer has started.
     /// If the alarm is already reached, the function exits immediately.
-    /// 
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_millis(&mut self, value: u32) -> Result<(), OverflowError>;
+    async fn wait_until_millis(&mut self, value: u64) -> Result<(), OverflowError>;
     /// Wait until the timer reaches the alarm specified in seconds since the timer has started.
     /// If the alarm is already reached, the function exits immediately.
-    /// 
+    ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_secs(&mut self, value: u32) -> Result<(), OverflowError>;
+    async fn wait_until_secs(&mut self, value: u64) -> Result<(), OverflowError>;
 }
 ```
 
+The alarm allows the user to wait until the timer reaches a give value.
+
+The proposal is to add only an async version of this trait. A blocking version could be made, but that's just a while loop that blocks on the timer which is trivial for any user of the `Timer` trait to already do.
+This is similar to the `Wait` trait which also only has an async version.
+
 Probably the most contentious part of the `Alarm` trait is that it inherits from the `Timer` trait.
 Other than the `ErrorType` trait, none of the existing traits inherit from something else.
-For `Alarm` it makes sense though, since it needs a time reference which `Timer` already provides.
+For `Alarm` it makes sense though, since it needs a time reference which `Timer` provides.
+
+The alarm can only be awaited with one value at a time. This is to keep things simple. If required, people can write their own alarm queue on top if they need multiple alarms.
 
 ## Considerations
 
-- The traits are not generically fallible and thus can't support things like communication errors.
-  Similar to `DelayNs` these traits are meant to be used with internal hardware timers.
+- The traits are not generically fallible and thus can't communicate specific errors.
+  Similar to `DelayNs` these traits are meant to be used with internal hardware timers and so don't need more fallibility.
 - Overflow is an error. If it were not, it could overflow and the user would get a low number returned which would be unexpected in most cases.
-- All time values are `u32` since this is usable in most usecases and most people are using 32-bit hardware.
-  A 16-bit timer would simply overflow faster and a 64-bit timer could overflow for `elapsed_micros` but not yet for `elapsed_millis`.
+- All time values are `u64`. This is wasteful for performance, but allows the trait to be used much more widely. Previous versions of the proposal use a `u32`, but that was deemed to have the wrond tradeoff. Additionally, looking into the wider embedded ecosystem, we see timer being 64-bit more than 32-bit. Embassy-time uses 64-bit and that has been ok for most people and in Zephyr the 32-bit timers are somewhat deprecated in favor of the 64-bit ones.
+We should follow suit.
 
 ## Why do we need this?
 
 ### `Timer`
 
-Measuring the time is useful in a lot of cases. The example here will be a driver for a flow meter.
-These devices often give a pulse every X amount of liquid or gas that has passed the meter.
-Currently this can't be built with only `embedded-hal` traits.
+There's currently no way to measure the time between two events. For example, people might want to write drivers that can measure the time between two gpio edge changes.
 
-With the timer one could build (with an example of how the `ticks` extension could be useful):
-
-```rust
-async fn print_flow_rate(mut input: impl Wait, mut timer: impl Timer) {
-    input.wait_for_high().await;
-    timer.start();
-    input.wait_for_low().await;
-
-    loop {
-        input.wait_for_high().await;
-        #[cfg(feature = "ticks-api")]
-        let secs_passed = timer.elapsed_ticks().unwrap() as f32 / timer.tickrate() as f32;
-        #[cfg(not(feature = "ticks-api"))]
-        let secs_passed = timer.elapsed_micros().unwrap() as f32 / 1_000_000.0;
-
-        timer.start(); // Restart the timer
-        input.wait_for_low().await;
-    
-        let flow_rate = 1.0 / secs_passed * LITERS_PER_PULSE;
-
-        info!("Current flow: {}", flow_rate);
-    }
-}
-```
-
-A real implementation would build support for the situation where you'd have extended times of 0 flow,
-which this example does not handle gracefully.
+This trait would allow them to do that generically without relying on specific implementations.
 
 ### `Alarm`
 
-It's a common pattern to have a long-running task doing multiple things in a select.
+For e.g. network stacks it's common to have long-running tasks doing multiple subtasks in a select.
 An example would be a radio protocol implementation that needs to schedule broadcasts.
-For trivial example you can go very far with `DelayNs`, but since `Future`s are anonymous, it gets tricky pretty fast.
-
-A good usecase for an alarm would be:
-
-```rust
-async fn wait_for_event(&mut self) -> Event {
-    let schedule_timer: impl Alarm = &mut self.schedule_timer;
-    let interval = self.get_scheduled_interval();
-    let message_bus = &mut self.message_bus;
-
-    match select(schedule_timer.wait_until_millis(interval), message_bus.recv()).await {
-        First(_) => {
-            schedule_timer.start(); // Restart the schedule timer
-            Event::ScheduledBroadcast
-        },
-        Second(message) => {
-            Event::Message(message)
-        }
-    }
-}
-```
+For trivial usecases you can go very far with `DelayNs`, but since `Future`s are anonymous, it gets tricky pretty fast since you need to keep the future on the stack.
 
 ## To discuss
 
 - Normal bikeshedding
 - More better docs
-- If time is measured in loops, such as in the `print_flow_rate` example, then there is some time difference between reading the elapsed time and resetting it back to 0
-  - Maybe this is not acceptable and points to a possibility of a better API
-  - Maybe this can only really be solved by long-running timers and we should come up with a solution for that
-    - This could be switching to `u64` and not dealing with overflows in the trait design like `embassy-time`.
-    - This would make the implementation much more involved.
-- The alarm example would be better off with some sort of `Ticker` abstraction à la `embassy_time::Ticker`.
-  - Maybe this suggests the `Alarm` trait is less useful than is presented in this proposal.
-- Maybe the 'max' `Timer` values should be associated consts?
-  - Will they always be known at compile time?
-- Maybe the `Alarm` should keep track of the alarm value. The API would then roughly become:
-  ```rust
-  pub trait Alarm: Timer {
-      /// Set the alarm to a number of microseconds after the timer start, rounded up.
-      fn set_alarm_micros(&mut self, value: u32) -> Result<(), OverflowError>;
-      // ...
-
-      /// Wait until the timer reaches the alarm.
-      /// If the alarm is already reached, the function exits immediately.
-      async fn wait(&mut self);
-  }
-  ```
-  - This would allow priming the alarm ahead of time which *could* make things easier for the user, especially if the alarm value is kept after restart. This would be at the cost of potentially higher implementation complexity.
-- The `Alarm` could also support multiple alarms. If the hardware has multiple compare channels, it could put them to work nicely. Pseudocode:
-  ```rust
-  pub trait Alarm: Timer {
-      fn alarms_available(&self) -> usize;
-      async fn wait_until_xxx(&self, value: u32) -> Result<(), OverflowError | MaxAlarmsReached>;
-  }
-  ```
-  This would also make the functions immutable which would make sharing an alarm easier, but it would require interior mutability for implementations
-- Which extensions (ticks and max) do we want to include in the final result?
-- Is overflow the only error we want to give?
-  - What should happen when the timer hasn't started yet?
-  - Implementation would likely get simpler if the overflow error (but perhaps with a different name) would be allowed to be returned when the timer hasn't started yet
 - What should the mutability for all functions be?
   - This is where `&mut self` helps implementations and `&self` helps sharability for the user which is a tension that needs a decision to be resolved
-- What about timers that have no, bad or difficult overflow detection? That currently is not supported. Should it?
-- The `Timer` API is up-counting. Should there be some helpers somewhere to help implementors convert a down-counting timer to an up-counting one?
 - What should the biggest and smallest (non-tick) resolution be? `DelayNs` goes down to nanoseconds, but only up to milliseconds.
 
 ## The case against `Alarm`
@@ -237,3 +156,4 @@ This is however clunky, possibly requires two timers instead of just one on simp
 - Extended matrix discussion in the embedded room: https://libera.irclog.whitequark.org/rust-embedded/2024-05-22#1716404604-1716414859
 - The 0.2 `CountDown` trait: https://docs.rs/embedded-hal/0.2.7/embedded_hal/timer/trait.CountDown.html
 - TODO: Discussion/written reason about why `CountDown` was removed from the 1.0 release
+- Unconf 2026 discussion: https://hackmd.io/@jnkr-ifx/S1Lplv3kGg

@@ -6,7 +6,7 @@
 //! These traits are intended to be eventually included into embedded-hal & embedded-hal-async.
 //! As such these traits are work in progress and the crate may receive breaking changes.
 
-use core::{error::Error, fmt::Display};
+use core::{error::Error, fmt::Display, num::NonZeroU64};
 
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
@@ -27,7 +27,7 @@ pub trait Timer {
     fn start(&mut self);
 
     /// Get the amount of ticks per second.
-    fn tickrate(&self) -> u64;
+    fn tickrate(&self) -> NonZeroU64;
     /// Return the number of elapsed ticks.
     fn elapsed_ticks(&self) -> Result<u64, OverflowError>;
 
@@ -101,7 +101,7 @@ pub trait Alarm: Timer {
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     fn wait_until_nanos(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
-        let ticks = (value * self.tickrate()) / NANOS_PER_SEC;
+        let ticks = (value * self.tickrate().get()) / NANOS_PER_SEC;
         self.wait_until_ticks(ticks)
     }
     /// Wait until the timer reaches the alarm specified in microseconds since the timer has started.
@@ -109,7 +109,7 @@ pub trait Alarm: Timer {
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     fn wait_until_micros(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
-        let ticks = (value * self.tickrate()) / MICROS_PER_SEC;
+        let ticks = (value * self.tickrate().get()) / MICROS_PER_SEC;
         self.wait_until_ticks(ticks)
     }
     /// Wait until the timer reaches the alarm specified in milliseconds since the timer has started.
@@ -117,7 +117,7 @@ pub trait Alarm: Timer {
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     fn wait_until_millis(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
-        let ticks = (value * self.tickrate()) / MILLIS_PER_SEC;
+        let ticks = (value * self.tickrate().get()) / MILLIS_PER_SEC;
         self.wait_until_ticks(ticks)
     }
     /// Wait until the timer reaches the alarm specified in seconds since the timer has started.
@@ -125,7 +125,7 @@ pub trait Alarm: Timer {
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
     fn wait_until_secs(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
-        let ticks = value * self.tickrate();
+        let ticks = value * self.tickrate().get();
         self.wait_until_ticks(ticks)
     }
 }

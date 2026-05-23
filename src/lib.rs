@@ -8,6 +8,10 @@
 
 use core::{error::Error, fmt::Display};
 
+const MILLIS_PER_SEC: u64 = 1_000;
+const MICROS_PER_SEC: u64 = 1_000_000;
+const NANOS_PER_SEC: u64 = 1_000_000_000;
+
 /// A timer that can be started from 0 and keeps track of the time until it overflows.
 ///
 /// This trait may be implemented directly on top of short running hardware timers
@@ -28,13 +32,21 @@ pub trait Timer {
     fn elapsed_ticks(&self) -> Result<u64, OverflowError>;
 
     /// Return the number of elapsed nanoseconds, rounded down.
-    fn elapsed_nanos(&self) -> Result<u64, OverflowError>;
+    fn elapsed_nanos(&self) -> Result<u64, OverflowError> {
+        Ok((self.elapsed_ticks()? * NANOS_PER_SEC) / self.tickrate())
+    }
     /// Return the number of elapsed microseconds, rounded down.
-    fn elapsed_micros(&self) -> Result<u64, OverflowError>;
+    fn elapsed_micros(&self) -> Result<u64, OverflowError> {
+        Ok((self.elapsed_ticks()? * MICROS_PER_SEC) / self.tickrate())
+    }
     /// Return the number of elapsed milliseconds, rounded down.
-    fn elapsed_millis(&self) -> Result<u64, OverflowError>;
+    fn elapsed_millis(&self) -> Result<u64, OverflowError> {
+        Ok((self.elapsed_ticks()? * MILLIS_PER_SEC) / self.tickrate())
+    }
     /// Return the number of elapsed seconds, rounded down.
-    fn elapsed_secs(&self) -> Result<u64, OverflowError>;
+    fn elapsed_secs(&self) -> Result<u64, OverflowError> {
+        Ok(self.elapsed_ticks()? / self.tickrate())
+    }
 
     /// The (inclusive) maximum number of ticks that can happen before the overflow occurs
     /// if [start](Self::start) were called now.
@@ -47,25 +59,33 @@ pub trait Timer {
     ///
     /// This value is not necessarily constant as implementations built on top of continuously running
     /// timers will have shrinking amount of time left.
-    fn max_nanos(&self) -> u64;
+    fn max_nanos(&self) -> u64 {
+        (self.max_ticks() * NANOS_PER_SEC) / self.tickrate()
+    }
     /// The (inclusive) maximum number of microseconds that can happen before the overflow occurs
     /// if [start](Self::start) were called now.
     ///
     /// This value is not necessarily constant as implementations built on top of continuously running
     /// timers will have shrinking amount of time left.
-    fn max_micros(&self) -> u64;
+    fn max_micros(&self) -> u64 {
+        (self.max_ticks() * MICROS_PER_SEC) / self.tickrate()
+    }
     /// The (inclusive) maximum number of milliseconds that can happen before the overflow occurs
     /// if [start](Self::start) were called now.
     ///
     /// This value is not necessarily constant as implementations built on top of continuously running
     /// timers will have shrinking amount of time left.
-    fn max_millis(&self) -> u64;
+    fn max_millis(&self) -> u64 {
+        (self.max_ticks() * MILLIS_PER_SEC) / self.tickrate()
+    }
     /// The (inclusive) maximum number of seconds that can happen before the overflow occurs
     /// if [start](Self::start) were called now.
     ///
     /// This value is not necessarily constant as implementations built on top of continuously running
     /// timers will have shrinking amount of time left.
-    fn max_secs(&self) -> u64;
+    fn max_secs(&self) -> u64 {
+        self.max_ticks() / self.tickrate()
+    }
 }
 
 /// An alarm that can be used to wait for a time to come.
@@ -80,22 +100,34 @@ pub trait Alarm: Timer {
     /// If the alarm is already reached, the function exits immediately.
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_nanos(&mut self, value: u64) -> Result<(), OverflowError>;
+    fn wait_until_nanos(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
+        let ticks = (value * self.tickrate()) / NANOS_PER_SEC;
+        self.wait_until_ticks(ticks)
+    }
     /// Wait until the timer reaches the alarm specified in microseconds since the timer has started.
     /// If the alarm is already reached, the function exits immediately.
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_micros(&mut self, value: u64) -> Result<(), OverflowError>;
+    fn wait_until_micros(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
+        let ticks = (value * self.tickrate()) / MICROS_PER_SEC;
+        self.wait_until_ticks(ticks)
+    }
     /// Wait until the timer reaches the alarm specified in milliseconds since the timer has started.
     /// If the alarm is already reached, the function exits immediately.
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_millis(&mut self, value: u64) -> Result<(), OverflowError>;
+    fn wait_until_millis(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
+        let ticks = (value * self.tickrate()) / MILLIS_PER_SEC;
+        self.wait_until_ticks(ticks)
+    }
     /// Wait until the timer reaches the alarm specified in seconds since the timer has started.
     /// If the alarm is already reached, the function exits immediately.
     ///
     /// The function returns an overflow error if the alarm value is higher than is supported by the implementation.
-    async fn wait_until_secs(&mut self, value: u64) -> Result<(), OverflowError>;
+    fn wait_until_secs(&mut self, value: u64) -> impl Future<Output = Result<(), OverflowError>> {
+        let ticks = value * self.tickrate();
+        self.wait_until_ticks(ticks)
+    }
 }
 
 /// The timer has overflowed

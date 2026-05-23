@@ -2,6 +2,12 @@
 name = "embedded-hal-timer"
 version = "0.1.0"
 edition = "2024"
+authors = ["Dion Dokter <dev@diondokter.nl>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tweedegolf/embedded-hal-timer"
+description = "Trait definition for embedded-hal Timer & Alarm"
+keywords = ["no_std", "embedded-hal"]
+categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
 
 [dependencies]
 defmt = { version = "1.0", optional = true }

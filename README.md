@@ -1,3 +1,3 @@
-# Trial repo for adding a Timer and Alarm trait to embedded-hal
+# Timer and Alarm trait intended to be upstreamed to embedded-hal
 
-Read the draft RFC: [here](./rfc-draft.md)
+Read the RFC: [here](./rfc.md)

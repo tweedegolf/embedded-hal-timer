@@ -23,6 +23,8 @@ pub trait Timer {
     fn start(&mut self);
 
     /// Get the amount of ticks per second.
+    ///
+    /// This value should remain constant unless explicitly changed by the user of this trait out-of-band.
     fn tickrate(&self) -> u64;
     /// Return the number of elapsed ticks.
     fn elapsed_ticks(&self) -> Result<u64, OverflowError>;

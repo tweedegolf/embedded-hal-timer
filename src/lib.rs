@@ -38,35 +38,40 @@ pub trait Timer {
     /// Return the number of elapsed seconds, rounded down.
     fn elapsed_secs(&self) -> Result<u64, OverflowError>;
 
-    /// The (inclusive) maximum number of ticks that can happen before the overflow occurs
-    /// if [start](Self::start) were called now.
+    /// The (inclusive) maximum number of ticks that can elapse after [start](Self::start) before the timer overflows.
     ///
-    /// This value is not necessarily constant as implementations built on top of continuously running
-    /// timers will have shrinking amount of time left.
+    /// This value must remain constant unless the user made an explicit out-of-band change to the timer.
+    ///
+    /// When the timer is designed to (practically) never overflow,
+    /// a value of [`u64::MAX`] may be used even when the implementation doesn't have a constant max value.
     fn max_ticks(&self) -> u64;
-    /// The (inclusive) maximum number of nanoseconds that can happen before the overflow occurs
-    /// if [start](Self::start) were called now.
+    /// The (inclusive) maximum number of nanoseconds that can elapse after [start](Self::start) before the timer overflows.
     ///
-    /// This value is not necessarily constant as implementations built on top of continuously running
-    /// timers will have shrinking amount of time left.
+    /// This value must remain constant unless the user made an explicit out-of-band change to the timer.
+    ///
+    /// When the timer is designed to (practically) never overflow,
+    /// a value of [`u64::MAX`] may be used even when the implementation doesn't have a constant max value.
     fn max_nanos(&self) -> u64;
-    /// The (inclusive) maximum number of microseconds that can happen before the overflow occurs
-    /// if [start](Self::start) were called now.
+    /// The (inclusive) maximum number of microseconds that can elapse after [start](Self::start) before the timer overflows.
     ///
-    /// This value is not necessarily constant as implementations built on top of continuously running
-    /// timers will have shrinking amount of time left.
+    /// This value must remain constant unless the user made an explicit out-of-band change to the timer.
+    ///
+    /// When the timer is designed to (practically) never overflow,
+    /// a value of [`u64::MAX`] may be used even when the implementation doesn't have a constant max value.
     fn max_micros(&self) -> u64;
-    /// The (inclusive) maximum number of milliseconds that can happen before the overflow occurs
-    /// if [start](Self::start) were called now.
+    /// The (inclusive) maximum number of milliseconds that can elapse after [start](Self::start) before the timer overflows.
     ///
-    /// This value is not necessarily constant as implementations built on top of continuously running
-    /// timers will have shrinking amount of time left.
+    /// This value must remain constant unless the user made an explicit out-of-band change to the timer.
+    ///
+    /// When the timer is designed to (practically) never overflow,
+    /// a value of [`u64::MAX`] may be used even when the implementation doesn't have a constant max value.
     fn max_millis(&self) -> u64;
-    /// The (inclusive) maximum number of seconds that can happen before the overflow occurs
-    /// if [start](Self::start) were called now.
+    /// The (inclusive) maximum number of seconds that can elapse after [start](Self::start) before the timer overflows.
     ///
-    /// This value is not necessarily constant as implementations built on top of continuously running
-    /// timers will have shrinking amount of time left.
+    /// This value must remain constant unless the user made an explicit out-of-band change to the timer.
+    ///
+    /// When the timer is designed to (practically) never overflow,
+    /// a value of [`u64::MAX`] may be used even when the implementation doesn't have a constant max value.
     fn max_secs(&self) -> u64;
 }
 
